@@ -61,4 +61,24 @@ export class UserService {
         }
     }
 
+    async findUserByEmail(email: string): Promise<CreateUserDto | null> {
+        try {
+            const user = await this.prisma.users.findUnique({
+                where: {
+                    email,
+                },
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    password_hash: true,
+                },
+            });
+
+            return user;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
+    }
 }
