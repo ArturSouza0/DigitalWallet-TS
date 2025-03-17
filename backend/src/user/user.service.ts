@@ -26,6 +26,43 @@ export class UserService {
         }
     }
 
+    async updateUser(id: number, body: CreateUserDto) {
+        const { username, password_hash, email } = body;
+        try {   
+            let hashedPassword = await bcrypt.hash(password_hash, 10);
+            await this.prisma.users.update({
+                where: {
+                    id,
+                },
+                data: {
+                    username,
+                    email,
+                    password_hash: hashedPassword,
+                },
+            });
+            return { message: 'User updated successfully' };
+        }
+        catch (error) {
+            console.error(error);
+            return { message: 'User update failed' };
+        }
+    }
+
+    async deleteUser(id: number) {
+        try {
+            await this.prisma.users.delete({
+                where: {
+                    id,
+                },
+            });
+            return { message: 'User deleted successfully' };
+        }
+        catch (error) {
+            console.error(error);
+            return { message: 'User deletion failed' };
+        }
+    }
+
     async findUserById(id: number): Promise<FindUserDto[]> {
         try {
             return await this.prisma.users.findMany({
