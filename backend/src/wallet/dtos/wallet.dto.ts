@@ -1,8 +1,17 @@
-import { Decimal } from "@prisma/client/runtime/library";
+import { Decimal } from '@prisma/client/runtime/library';
+import { IsNumber, IsOptional } from 'class-validator';
 
 export class CreateWalletDto {
-    id?: number;
-    user_id: number;
-    balance: number;
-    created_at?: Date;
+  @IsOptional()
+  @IsNumber()
+  id?: number;
+
+  @IsNumber()
+  user_id: number;
+
+  @IsNumber()
+  balance: Decimal | null;
+
+  @IsOptional()
+  created_at?: Date;
 }

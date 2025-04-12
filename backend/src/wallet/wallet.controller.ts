@@ -3,13 +3,24 @@ import { WalletService } from './wallet.service';
 import { CreateWalletDto } from './dtos/wallet.dto';
 import { Decimal } from '@prisma/client/runtime/library';
 
-@Controller()
+@Controller('wallets')
 export class WalletController {
     constructor(private readonly walletService: WalletService) { }
 
+    @Post('createWallet')
+    async createWallet(@Body() createWalletDto: CreateWalletDto) {
+      await this.walletService.createWallet(createWalletDto);
+      return { message: 'Wallet created successfully' };
+    }
+
+    @Get('findWalletById/:id')
+    async findWalletById(@Param('id') id: string) {
+        return await this.walletService.getWallet(Number(id));
+    }
+
     @Get('findWalletByUserId/:user_id')
     async findWalletByUserId(@Param('user_id') user_id: string) {
-        return await this.walletService.getWallet(parseInt(user_id, 10));
+        return await this.walletService.getWalletByUserId(Number(user_id));
     }
 
     @Get('findWalletByAll')
@@ -19,24 +30,22 @@ export class WalletController {
 
     @Get('findWalletByBalance/:user_id')
     async findWalletByBalance(@Param('user_id') user_id: string) {
-        return await this.walletService.getWalletBalance(parseInt(user_id, 10));
+        return await this.walletService.getWalletBalance(Number(user_id));
     }
 
-    @Post('createWallet')
-    async createWallet(@Body() body: CreateWalletDto) {
-        return await this.walletService.createWallet(body.user_id);
-    }
-
-    @Put('updateWallet/:user_id')
+    @Put('updateWallet/:id')
     async updateWallet(
-        @Param('user_id') user_id: string,
-        @Body('balance') balance: Decimal,
+      @Param('id') id: string,
+      @Body() body: { user_id: number; balance: Decimal },
     ) {
-        return await this.walletService.updateWallet(parseInt(user_id, 10), balance);
+      return await this.walletService.updateWallet(Number(id), {
+        user_id: body.user_id,
+        balance: body.balance,
+      });
     }
 
     @Delete('deleteWallet/:user_id')
     async deleteWallet(@Param('user_id') user_id: string) {
-        return await this.walletService.deleteWallet(parseInt(user_id, 10));
+        return await this.walletService.deleteWallet(Number(user_id));
     }
 }
