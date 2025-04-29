@@ -1,10 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Decimal } from '@prisma/client/runtime/library';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { ITransactionRepository } from './interfaces/transactions.repository.interface';
 
 @Injectable()
 export class TransactionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject('ITransactionRepository')
+    private readonly transactionRepository: ITransactionRepository
+  ) {}
 
   private async validateWallets(senderId: number, receiverId: number, amount: Decimal) {
     if (senderId === receiverId) {
@@ -12,8 +15,8 @@ export class TransactionService {
     }
 
     const [senderWallet, receiverWallet] = await Promise.all([
-      this.prisma.wallets.findUnique({ where: { user_id: senderId } }),
-      this.prisma.wallets.findUnique({ where: { user_id: receiverId } })
+      this.transactionRepository.findWalletByUserId(senderId),
+      this.transactionRepository.findWalletByUserId(receiverId),
     ]);
 
     if (!senderWallet || !receiverWallet) {
@@ -25,29 +28,14 @@ export class TransactionService {
     }
   }
 
-  private includeUserDetails = {
-    include: {
-      users_transactions_sender_idTousers: { select: { username: true } },
-      users_transactions_receiver_idTousers: { select: { username: true } }
-    }
-  };
-
   async createTransaction(senderId: number, receiverId: number, amount: Decimal) {
     await this.validateWallets(senderId, receiverId, amount);
 
     try {
-      await this.prisma.$transaction([
-        this.prisma.wallets.update({
-          where: { user_id: senderId },
-          data: { balance: { decrement: amount } }
-        }),
-        this.prisma.wallets.update({
-          where: { user_id: receiverId },
-          data: { balance: { increment: amount } }
-        }),
-        this.prisma.transactions.create({
-          data: { sender_id: senderId, receiver_id: receiverId, amount }
-        })
+      await this.transactionRepository.runInTransaction([
+        () => this.transactionRepository.updateWalletBalance(senderId, amount, 'decrement'),
+        () => this.transactionRepository.updateWalletBalance(receiverId, amount, 'increment'),
+        () => this.transactionRepository.createTransaction(senderId, receiverId, amount),
       ]);
 
       return { message: 'Transaction completed successfully' };
@@ -55,19 +43,11 @@ export class TransactionService {
       console.error('Transaction failed:', error);
       throw new BadRequestException('Transaction failed');
     }
-  }
+}
 
   async getUserTransactions(userId: number) {
     try {
-      return await this.prisma.transactions.findMany({
-        where: {
-          OR: [
-            { sender_id: userId },
-            { receiver_id: userId }
-          ]
-        },
-        ...this.includeUserDetails
-      });
+      return await this.transactionRepository.findByUserId(userId);
     } catch (error) {
       console.error('Failed to get user transactions:', error);
       throw new BadRequestException('Failed to get user transactions');
@@ -76,15 +56,8 @@ export class TransactionService {
 
   async getTransactionById(transactionId: number) {
     try {
-      const transaction = await this.prisma.transactions.findUnique({
-        where: { id: transactionId },
-        ...this.includeUserDetails
-      });
-
-      if (!transaction) {
-        throw new NotFoundException('Transaction not found');
-      }
-
+      const transaction = await this.transactionRepository.findById(transactionId);
+      if (!transaction) throw new NotFoundException('Transaction not found');
       return transaction;
     } catch (error) {
       console.error('Failed to get transaction:', error);
@@ -95,9 +68,7 @@ export class TransactionService {
 
   async getAllTransactions() {
     try {
-      return await this.prisma.transactions.findMany({
-        ...this.includeUserDetails
-      });
+      return await this.transactionRepository.findAll();
     } catch (error) {
       console.error('Failed to get all transactions:', error);
       throw new BadRequestException('Failed to get all transactions');
@@ -106,9 +77,7 @@ export class TransactionService {
 
   async deleteTransaction(transactionId: number) {
     try {
-      await this.prisma.transactions.delete({
-        where: { id: transactionId }
-      });
+      await this.transactionRepository.delete(transactionId);
       return { message: 'Transaction deleted successfully' };
     } catch (error) {
       console.error('Failed to delete transaction:', error);

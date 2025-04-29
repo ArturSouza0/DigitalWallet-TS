@@ -13,5 +13,5 @@ export class CreateWalletDto {
   balance: Decimal | null;
 
   @IsOptional()
-  created_at?: Date;
+  created_at?: Date | null;
 }

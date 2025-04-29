@@ -7,3 +7,10 @@ export class CreateTransactionDto {
     amount: Decimal;
     created_at?: Date;
 }
+
+export class WalletDto {
+    id: number;
+    user_id: number;
+    balance: Decimal | null;
+    created_at: Date | null;
+  }

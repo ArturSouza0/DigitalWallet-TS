@@ -1,8 +1,8 @@
-import { Controller, Post, Get, Param, Body } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Delete } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
-@Controller()
+@Controller('transactions')
 export class TransactionController {
     constructor(private readonly transactionService: TransactionService) { }
 
@@ -23,5 +23,15 @@ export class TransactionController {
     @Get('findTransactionById/:transaction_id')
     async getTransactionById(@Param('transaction_id') transaction_id: number) {
         return this.transactionService.getTransactionById(transaction_id);
+    }
+
+    @Get('findAllTransactions')
+    async getAllTransactions() {
+        return this.transactionService.getAllTransactions();
+    }
+
+    @Delete('deleteTransaction/:transaction_id')
+    async deleteTransaction(@Param('transaction_id') transaction_id: number) {
+        return this.transactionService.deleteTransaction(transaction_id);
     }
 }
